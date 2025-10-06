@@ -8,6 +8,7 @@ export default function EquipmentListPage() {
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sort, setSort] = useState("nameAsc");
 
   useEffect(() => {
     api
@@ -16,6 +17,12 @@ export default function EquipmentListPage() {
       .catch(() => setError("Błąd ładowania listy sprzętu"))
       .finally(() => setLoading(false));
   }, []);
+
+  const sorted = [...items].sort((a, b) => {
+    if (sort === "nameAsc") return a.name.localeCompare(b.name);
+    if (sort === "nameDesc") return b.name.localeCompare(a.name);
+    return 0;
+  });
 
   return (
     <Layout>
@@ -26,9 +33,25 @@ export default function EquipmentListPage() {
         </p>
       </header>
 
+      <div className="mb-6 flex items-center space-x-4">
+        <label htmlFor="sort" className="text-gray-700">
+          Sortuj:
+        </label>
+        <select
+          id="sort"
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          className="border px-3 py-2 rounded"
+        >
+          <option value="nameAsc">Nazwa A→Z</option>
+          <option value="nameDesc">Nazwa Z→A</option>
+        </select>
+      </div>
+
       {loading && (
         <div className="flex justify-center py-12">
           <svg
+            role="progressbar"
             className="animate-spin h-8 w-8 text-blue-600"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -59,7 +82,7 @@ export default function EquipmentListPage() {
 
       {!loading && !error && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((eq) => {
+          {sorted.map((eq) => {
             const img = eq.media.images?.[0];
             return (
               <Link key={eq._id} href={`/equipment/${eq._id}`}>
