@@ -1,28 +1,73 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import Layout from "../../components/Layout";
 import api from "../../lib/api";
 
 export default function EquipmentListPage() {
   const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState("nameAsc");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  const searchParams = useSearchParams();
+  const categoryFromUrl = searchParams.get("category");
+
+  // Pobierz kategorie
   useEffect(() => {
+    fetch("/api/categories")
+      .then((res) => res.json())
+      .then((data) => setCategories(data.data || []))
+      .catch(() => console.error("Błąd ładowania kategorii"));
+  }, []);
+
+  // Ustaw kategorię z URL-a i oznacz jako zainicjalizowane
+  useEffect(() => {
+    if (categoryFromUrl) {
+      setSelectedCategory(categoryFromUrl);
+    }
+    setIsInitialized(true);
+  }, [categoryFromUrl]);
+
+  // Pobierz sprzęt - tylko po inicjalizacji
+  useEffect(() => {
+    if (!isInitialized) return; // Czekaj na inicjalizację
+
+    setLoading(true);
+    setError("");
+
+    const endpoint = selectedCategory
+      ? `/equipment?category=${selectedCategory}`
+      : "/equipment";
+
     api
-      .get("/equipment")
+      .get(endpoint)
       .then(({ data }) => setItems(data.data.items))
       .catch(() => setError("Błąd ładowania listy sprzętu"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedCategory, isInitialized]);
+
+  const handleCategoryChange = (categoryId) => {
+    setSelectedCategory(categoryId);
+    // Opcjonalnie: zaktualizuj URL bez przeładowania strony
+    const newUrl = categoryId
+      ? `/equipment?category=${categoryId}`
+      : "/equipment";
+    window.history.pushState({}, "", newUrl);
+  };
 
   const sorted = [...items].sort((a, b) => {
     if (sort === "nameAsc") return a.name.localeCompare(b.name);
     if (sort === "nameDesc") return b.name.localeCompare(a.name);
     return 0;
   });
+
+  const selectedCategoryName =
+    categories.find((cat) => cat._id === selectedCategory)?.name || "Wszystkie";
 
   return (
     <Layout>
@@ -31,21 +76,57 @@ export default function EquipmentListPage() {
         <p className="text-gray-600">
           Przeglądaj dostępne urządzenia i akcesoria.
         </p>
+        {selectedCategory && (
+          <p className="text-blue-600 mt-2">
+            Kategoria:{" "}
+            <span className="font-semibold">{selectedCategoryName}</span>
+          </p>
+        )}
       </header>
 
-      <div className="mb-6 flex items-center space-x-4">
-        <label htmlFor="sort" className="text-gray-700">
-          Sortuj:
-        </label>
-        <select
-          id="sort"
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          className="border px-3 py-2 rounded"
-        >
-          <option value="nameAsc">Nazwa A→Z</option>
-          <option value="nameDesc">Nazwa Z→A</option>
-        </select>
+      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+        <div className="flex items-center space-x-2">
+          <label htmlFor="category" className="text-gray-700">
+            Kategoria:
+          </label>
+          <select
+            id="category"
+            value={selectedCategory}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            className="border px-3 py-2 rounded"
+          >
+            <option value="">Wszystkie kategorie</option>
+            {categories.map((cat) => (
+              <option key={cat._id} value={cat._id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <label htmlFor="sort" className="text-gray-700">
+            Sortuj:
+          </label>
+          <select
+            id="sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="border px-3 py-2 rounded"
+          >
+            <option value="nameAsc">Nazwa A→Z</option>
+            <option value="nameDesc">Nazwa Z→A</option>
+          </select>
+        </div>
+
+        {selectedCategory && (
+          <button
+            onClick={() => handleCategoryChange("")}
+            className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+          >
+            Wyczyść filtr
+          </button>
+        )}
       </div>
 
       {loading && (
@@ -112,7 +193,11 @@ export default function EquipmentListPage() {
 
       {!loading && items.length === 0 && !error && (
         <div className="text-center py-12">
-          <p className="text-gray-500">Brak dostępnego sprzętu.</p>
+          <p className="text-gray-500">
+            {selectedCategory
+              ? "Brak sprzętu w wybranej kategorii."
+              : "Brak dostępnego sprzętu."}
+          </p>
         </div>
       )}
     </Layout>
