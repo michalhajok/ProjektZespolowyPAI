@@ -12,15 +12,12 @@ export default function EquipmentDetailPage({ params }) {
   const [item, setItem] = useState(null);
   const [error, setError] = useState("");
   const [reviews, setReviews] = useState([]);
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState("");
   const [dates, setDates] = useState({ startDate: "", endDate: "" });
   const [showReserve, setShowReserve] = useState(false);
   const router = useRouter();
 
   // fetch equipment, update views
   useEffect(() => {
-    api.post(`/equipment/${id}/views`).catch(() => {});
     api
       .get(`/equipment/${id}`)
       .then(({ data }) => setItem(data.data))
@@ -35,12 +32,12 @@ export default function EquipmentDetailPage({ params }) {
       .catch(() => {});
   }, [id]);
 
-  console.log(reviews);
-
   const handleReserve = async () => {
     if (!dates.startDate || !dates.endDate) return;
     try {
-      await api.post("/reservations", { equipment: id, dates });
+      console.log(id, dates, user._id);
+
+      await api.post("/reservations", { equipment: id, dates, user: user.id });
       router.push("/reservations");
     } catch {
       alert("Błąd przy rezerwacji");

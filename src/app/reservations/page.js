@@ -21,8 +21,15 @@ export default function ReservationsPage() {
 
   const load = async () => {
     try {
-      const { data } = await api.get("/reservations");
-      setReservations(data.data.items);
+      if (user?.role === "admin") {
+        const { data } = await api.get("/reservations");
+        setReservations(data.data.items);
+        return;
+      } else if (user) {
+        const { data } = await api.get("/reservations/?user=" + user.id);
+        setReservations(data.data.items);
+        return;
+      }
     } catch {
       setError("Nie udało się pobrać rezerwacji");
     }
